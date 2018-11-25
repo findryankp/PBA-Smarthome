@@ -3,6 +3,7 @@ package info.androidhive.androidlocation;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentSender;
 import android.content.pm.PackageManager;
@@ -13,6 +14,7 @@ import android.os.Looper;
 import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.widget.Button;
@@ -34,6 +36,8 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 import com.karumi.dexter.Dexter;
 import com.karumi.dexter.PermissionToken;
 import com.karumi.dexter.listener.PermissionDeniedResponse;
@@ -48,6 +52,9 @@ import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
 
+import static info.androidhive.androidlocation.QRCodeActivity.QrLat;
+import static info.androidhive.androidlocation.QRCodeActivity.QrLong;
+
 /**
  * Reference: https://github.com/googlesamples/android-play-location/tree/master/LocationUpdates
  */
@@ -55,6 +62,7 @@ import butterknife.OnClick;
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = MainActivity.class.getSimpleName();
+    private double hasil;
 
     @BindView(R.id.location_result)
     TextView txtLocationResult;
@@ -104,6 +112,7 @@ public class MainActivity extends AppCompatActivity {
 
         // restore the values from saved instance state
         restoreValuesFromBundle(savedInstanceState);
+        startLocationButtonClick();
     }
 
     private void init() {
@@ -162,17 +171,39 @@ public class MainActivity extends AppCompatActivity {
      */
     private void updateLocationUI() {
         if (mCurrentLocation != null) {
-            txtLocationResult.setText(
-                    "Lat: " + mCurrentLocation.getLatitude() + ", " +
-                            "Lng: " + mCurrentLocation.getLongitude()
-            );
 
-            // giving a blink animation on TextView
-            txtLocationResult.setAlpha(0);
-            txtLocationResult.animate().alpha(1).setDuration(300);
+            double lat1 = Double.parseDouble(QrLat);
+            double lng1 = Double.parseDouble(QrLong);
+            double lat2 = mCurrentLocation.getLatitude();
+            double lng2 = mCurrentLocation.getLongitude();
 
-            // location last updated time
-            txtUpdatedOn.setText("Last updated on: " + mLastUpdateTime);
+            hasil = distance(lat1,lng2,lat2,lng2);
+            if(hasil>0.1){
+                txtLocationResult.setText("Jarak Terlalu Jauh");
+                stopLocationUpdates();
+            }
+            else {
+                //mengganti data pada firebase
+                FirebaseDatabase database = FirebaseDatabase.getInstance();
+                DatabaseReference myRef = database.getReference("S1");
+                myRef.setValue("0");
+
+                txtLocationResult.setText(
+                        "Lat: " + mCurrentLocation.getLatitude() + ", " + "Lng: " + mCurrentLocation.getLongitude()
+                                + "/n lat1:" +lat1
+                                + "/n lng1:" +lng1
+                                + "/n lat2:" +lat2
+                                + "/n lng2:" +lng2
+                                + "/n hasil:" +hasil
+                );
+
+                // giving a blink animation on TextView
+                txtLocationResult.setAlpha(0);
+                txtLocationResult.animate().alpha(1).setDuration(300);
+
+                // location last updated time
+                txtUpdatedOn.setText("Last updated on: " + mLastUpdateTime);
+            }
         }
 
         toggleButtons();
@@ -250,7 +281,7 @@ public class MainActivity extends AppCompatActivity {
                 });
     }
 
-    @OnClick(R.id.btn_start_location_updates)
+//    @OnClick(R.id.btn_start_location_updates)
     public void startLocationButtonClick() {
         // Requesting ACCESS_FINE_LOCATION using Dexter library
         Dexter.withActivity(this)
@@ -366,4 +397,26 @@ public class MainActivity extends AppCompatActivity {
             stopLocationUpdates();
         }
     }
+
+    private double distance(double lat1, double lon1, double lat2, double lon2) {
+        double theta = lon1 - lon2;
+        double dist = Math.sin(deg2rad(lat1))
+                * Math.sin(deg2rad(lat2))
+                + Math.cos(deg2rad(lat1))
+                * Math.cos(deg2rad(lat2))
+                * Math.cos(deg2rad(theta));
+        dist = Math.acos(dist);
+        dist = rad2deg(dist);
+        dist = dist * 60 * 1.1515;
+        return (dist);
+    }
+
+    private double deg2rad(double deg) {
+        return (deg * Math.PI / 180.0);
+    }
+
+    private double rad2deg(double rad) {
+        return (rad * 180.0 / Math.PI);
+    }
+
 }

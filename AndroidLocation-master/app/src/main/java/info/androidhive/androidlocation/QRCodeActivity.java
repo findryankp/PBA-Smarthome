@@ -27,6 +27,8 @@ public class QRCodeActivity extends AppCompatActivity implements ZXingScannerVie
     private static final int REQUEST_CAMERA = 1;
     private ZXingScannerView scannerView;
     private static int camId = Camera.CameraInfo.CAMERA_FACING_BACK;
+    public static String QrLat;
+    public static String QrLong;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -130,12 +132,18 @@ public class QRCodeActivity extends AppCompatActivity implements ZXingScannerVie
         Log.d("QRCodeScanner", result.getText());
         Log.d("QRCodeScanner", result.getBarcodeFormat().toString());
 
-        final String cek = result.getText();
+        //mendapatkan hasil qr code
+        final String code = result.getText();
+        String[] qrcode = code.split(",");
+        String cek = qrcode[0];
+        QrLat = qrcode[1];
+        QrLong = qrcode[2];
 
-        if (cek.equals("passwordbenar")){
-            FirebaseDatabase database = FirebaseDatabase.getInstance();
-            DatabaseReference myRef = database.getReference("S1");
-            myRef.setValue("0");
+        //qrcode diperiksa
+        if (cek.equals("secretpassword")){
+            //kirim log loginnya
+
+            //menuju halaman QR Code
             Intent intent = new Intent(QRCodeActivity.this, MainActivity.class);
             startActivity(intent);
         }
@@ -155,7 +163,7 @@ public class QRCodeActivity extends AppCompatActivity implements ZXingScannerVie
 //                    startActivity(browserIntent);
 //                }
 //            });
-            builder.setMessage("Harap mengulangi pengambilan kamera");
+            builder.setMessage("Harap mengulangi pengambilan kamera " + cek);
             AlertDialog alert1 = builder.create();
             alert1.show();
         }
